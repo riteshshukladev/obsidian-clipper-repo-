@@ -60,6 +60,13 @@ export interface ReaderSettings {
 	themeMode: 'auto' | 'light' | 'dark';
 }
 
+export interface ObsidianApiSettings {
+	enabled: boolean;
+	apiKey: string;
+	host: string;
+	port: number;
+}
+
 export interface Settings {
 	vaults: string[];
 	showMoreActionsButton: boolean;
@@ -78,6 +85,7 @@ export interface Settings {
 	defaultPromptContext: string;
 	propertyTypes: PropertyType[];
 	readerSettings: ReaderSettings;
+	obsidianApi: ObsidianApiSettings;
 	stats: {
 		addToObsidian: number;
 		saveFile: number;

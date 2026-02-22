@@ -11,6 +11,7 @@ import { showSettingsSection } from './settings-section-ui';
 import { updatePropertyType } from './property-types-manager';
 import { getMessage } from '../utils/i18n';
 import { parse, validateVariables, validateFilters } from '../utils/parser';
+import { fetchObsidianFolders, ObsidianFolder } from '../utils/obsidian-api';
 let hasUnsavedChanges = false;
 
 export function resetUnsavedChanges(): void {
@@ -23,11 +24,11 @@ export function updateTemplateList(loadedTemplates?: Template[]): void {
 		console.error('Template list element not found');
 		return;
 	}
-	
+
 	const templatesToUse = loadedTemplates || templates;
-	
+
 	// Filter out null or undefined templates
-	const validTemplates = templatesToUse.filter((template): template is Template => 
+	const validTemplates = templatesToUse.filter((template): template is Template =>
 		template != null && typeof template === 'object' && 'id' in template && 'name' in template
 	);
 
@@ -35,7 +36,7 @@ export function updateTemplateList(loadedTemplates?: Template[]): void {
 	templateList.textContent = '';
 	validTemplates.forEach((template, index) => {
 		const li = document.createElement('li');
-		
+
 		const dragHandle = createElementWithClass('div', 'drag-handle');
 		dragHandle.appendChild(createElementWithHTML('i', '', { 'data-lucide': 'grip-vertical' }));
 		li.appendChild(dragHandle);
@@ -97,7 +98,7 @@ export function updateTemplateList(loadedTemplates?: Template[]): void {
 			e.stopPropagation();
 			deleteTemplateFromList(template.id);
 		});
-		
+
 		if (index === editingTemplateIndex) {
 			li.classList.add('active');
 		}
@@ -178,9 +179,73 @@ export function showTemplateEditor(template: Template | null): void {
 	if (templateProperties) templateProperties.textContent = '';
 
 	const pathInput = document.getElementById('template-path-name') as HTMLInputElement;
-	if (pathInput) {
-		pathInput.value = editingTemplate.path || '';
-		validateTemplateField(pathInput, false);
+	const folderSelect = document.getElementById('template-folder-select') as HTMLSelectElement;
+	const isDailyNote = editingTemplate.behavior === 'append-daily' || editingTemplate.behavior === 'prepend-daily';
+
+	if (pathInput && folderSelect) {
+		if (isDailyNote) {
+			pathInput.style.display = 'none';
+			folderSelect.style.display = 'none';
+		} else {
+			if (generalSettings.obsidianApi.enabled) {
+				pathInput.style.display = 'none';
+				folderSelect.style.display = 'block';
+
+				// Populate dropdown
+				fetchObsidianFolders().then(folders => {
+					folderSelect.textContent = ''; // Clear existing
+
+					// Add an empty option or the current template path
+					const currentPath = editingTemplate.path || '';
+					const defaultOption = document.createElement('option');
+					defaultOption.value = currentPath;
+					defaultOption.textContent = currentPath || '/';
+					folderSelect.appendChild(defaultOption);
+
+					folders.forEach(f => {
+						if (f.path !== currentPath) {
+							const option = document.createElement('option');
+							option.value = f.path;
+							option.textContent = f.path;
+							folderSelect.appendChild(option);
+						}
+					});
+
+					// Add "New folder" option at the end
+					const newFolderOption = document.createElement('option');
+					newFolderOption.value = '__new_folder__';
+					newFolderOption.textContent = '✚ New folder...';
+					folderSelect.appendChild(newFolderOption);
+
+					folderSelect.value = currentPath;
+
+					// Toggle to text input when "New folder" is selected
+					folderSelect.addEventListener('change', () => {
+						if (folderSelect.value === '__new_folder__') {
+							folderSelect.style.display = 'none';
+							pathInput.style.display = 'block';
+							pathInput.value = '';
+							pathInput.placeholder = 'Enter new folder path';
+							pathInput.focus();
+						}
+					});
+				}).catch(error => {
+					console.error('Failed to populate folders in template editor:', error);
+					pathInput.style.display = 'block';
+					folderSelect.style.display = 'none';
+					pathInput.value = editingTemplate.path || '';
+				});
+
+				folderSelect.addEventListener('change', () => {
+					updateTemplateFromForm();
+				});
+			} else {
+				pathInput.style.display = 'block';
+				folderSelect.style.display = 'none';
+				pathInput.value = editingTemplate.path || '';
+				validateTemplateField(pathInput, false);
+			}
+		}
 	}
 
 	const behaviorSelect = document.getElementById('template-behavior') as HTMLSelectElement;
@@ -272,7 +337,22 @@ function updateBehaviorFields(): void {
 		const isDailyNote = selectedBehavior === 'append-daily' || selectedBehavior === 'prepend-daily';
 
 		if (noteNameFormatContainer) noteNameFormatContainer.style.display = isDailyNote ? 'none' : 'block';
-		if (pathContainer) pathContainer.style.display = isDailyNote ? 'none' : 'block';
+		if (pathContainer) {
+			pathContainer.style.display = isDailyNote ? 'none' : 'block';
+
+			const pathInput = document.getElementById('template-path-name') as HTMLInputElement;
+			const folderSelect = document.getElementById('template-folder-select') as HTMLSelectElement;
+
+			if (pathInput && folderSelect && !isDailyNote) {
+				if (generalSettings.obsidianApi.enabled) {
+					pathInput.style.display = 'none';
+					folderSelect.style.display = 'block';
+				} else {
+					pathInput.style.display = 'block';
+					folderSelect.style.display = 'none';
+				}
+			}
+		}
 
 		if (noteNameFormat) {
 			noteNameFormat.required = !isDailyNote;
@@ -403,9 +483,9 @@ export function addPropertyToEditor(name: string = '', value: string = '', id: s
 	propertyDiv.addEventListener('mouseup', resetDraggable);
 
 	if (select) {
-		select.addEventListener('change', function() {
+		select.addEventListener('change', function () {
 			if (propertySelectedDiv) updateSelectedOption(this.value, propertySelectedDiv);
-			
+
 			// Get the current name of the property
 			const nameInput = propertyDiv.querySelector('.property-name') as HTMLInputElement;
 			const currentName = nameInput.value;
@@ -436,12 +516,12 @@ export function addPropertyToEditor(name: string = '', value: string = '', id: s
 
 	initializeIcons(propertyDiv);
 
-	nameInput.addEventListener('input', function(this: HTMLInputElement) {
+	nameInput.addEventListener('input', function (this: HTMLInputElement) {
 		const selectedType = generalSettings.propertyTypes.find(pt => pt.name === this.value);
 		if (selectedType) {
 			select.value = selectedType.type;
 			updateSelectedOption(selectedType.type, propertySelectedDiv);
-			
+
 			// Only update the property type if the name is not empty
 			if (this.value.trim() !== '') {
 				updatePropertyType(this.value, selectedType.type).then(() => {
@@ -450,7 +530,7 @@ export function addPropertyToEditor(name: string = '', value: string = '', id: s
 					console.error(`Failed to update property type for ${this.value}:`, error);
 				});
 			}
-			
+
 			// Fill in the default value if it exists and the value input is empty
 			if (selectedType.defaultValue && !valueInput.value) {
 				valueInput.value = selectedType.defaultValue;
@@ -462,7 +542,7 @@ export function addPropertyToEditor(name: string = '', value: string = '', id: s
 	});
 
 	// Add a change event listener to handle selection from autocomplete
-	nameInput.addEventListener('change', function(this: HTMLInputElement) {
+	nameInput.addEventListener('change', function (this: HTMLInputElement) {
 		const selectedType = generalSettings.propertyTypes.find(pt => pt.name === this.value);
 		if (selectedType) {
 			// Fill in the default value if it exists, regardless of current value
@@ -477,14 +557,14 @@ export function addPropertyToEditor(name: string = '', value: string = '', id: s
 
 function updateSelectedOption(value: string, propertySelected: HTMLElement): void {
 	const iconName = getPropertyTypeIcon(value);
-	
+
 	// Clear existing content
 	propertySelected.textContent = '';
-	
+
 	// Create and append the new icon element
 	const iconElement = createElementWithHTML('i', '', { 'data-lucide': iconName });
 	propertySelected.appendChild(iconElement);
-	
+
 	propertySelected.setAttribute('data-value', value);
 	initializeIcons(propertySelected);
 }
@@ -504,7 +584,12 @@ export function updateTemplateFromForm(): void {
 	const isDailyNote = template.behavior === 'append-daily' || template.behavior === 'prepend-daily';
 
 	const pathInput = document.getElementById('template-path-name') as HTMLInputElement;
-	if (pathInput) template.path = pathInput.value;
+	const folderSelect = document.getElementById('template-folder-select') as HTMLSelectElement;
+	if (generalSettings.obsidianApi.enabled && folderSelect && folderSelect.style.display !== 'none') {
+		template.path = folderSelect.value;
+	} else if (pathInput) {
+		template.path = pathInput.value;
+	}
 
 	const noteNameFormat = document.getElementById('note-name-format') as HTMLInputElement;
 	if (noteNameFormat) {

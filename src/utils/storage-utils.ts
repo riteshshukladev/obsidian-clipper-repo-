@@ -29,6 +29,12 @@ export let generalSettings: Settings = {
 		theme: 'default',
 		themeMode: 'auto'
 	},
+	obsidianApi: {
+		enabled: false,
+		apiKey: '',
+		host: '127.0.0.1',
+		port: 27124
+	},
 	stats: {
 		addToObsidian: 0,
 		saveFile: 0,
@@ -45,7 +51,7 @@ export function setLocalStorage(key: string, value: any): Promise<void> {
 }
 
 export function getLocalStorage(key: string): Promise<any> {
-	return browser.storage.local.get(key).then((result: {[key: string]: any}) => result[key]);
+	return browser.storage.local.get(key).then((result: { [key: string]: any }) => result[key]);
 }
 
 interface StorageData {
@@ -79,6 +85,12 @@ interface StorageData {
 		defaultPromptContext?: string;
 	};
 	property_types?: PropertyType[];
+	obsidian_api?: {
+		enabled?: boolean;
+		apiKey?: string;
+		host?: string;
+		port?: number;
+	};
 	stats?: {
 		addToObsidian: number;
 		saveFile: number;
@@ -94,7 +106,7 @@ const CURRENT_MIGRATION_VERSION = 1;
 
 export async function loadSettings(): Promise<Settings> {
 	const data = await browser.storage.sync.get(null) as StorageData;
-	
+
 	// Load default settings first
 	const defaultSettings: Settings = {
 		vaults: [],
@@ -114,6 +126,12 @@ export async function loadSettings(): Promise<Settings> {
 		defaultPromptContext: '',
 		propertyTypes: [],
 		saveBehavior: 'addToObsidian',
+		obsidianApi: {
+			enabled: false,
+			apiKey: '',
+			host: '127.0.0.1',
+			port: 27124
+		},
 		readerSettings: {
 			fontSize: 1.5,
 			lineHeight: 1.6,
@@ -139,11 +157,11 @@ export async function loadSettings(): Promise<Settings> {
 
 	// Validate and sanitize data to prevent corruption
 	const sanitizedVaults = Array.isArray(data.vaults) ? data.vaults.filter(v => typeof v === 'string') : [];
-	const sanitizedModels = Array.isArray(data.interpreter_settings?.models) 
-		? data.interpreter_settings.models.filter(m => m && typeof m === 'object' && typeof m.id === 'string') 
+	const sanitizedModels = Array.isArray(data.interpreter_settings?.models)
+		? data.interpreter_settings.models.filter(m => m && typeof m === 'object' && typeof m.id === 'string')
 		: [];
-	const sanitizedProviders = Array.isArray(data.interpreter_settings?.providers) 
-		? data.interpreter_settings.providers.filter(p => p && typeof p === 'object' && typeof p.id === 'string') 
+	const sanitizedProviders = Array.isArray(data.interpreter_settings?.providers)
+		? data.interpreter_settings.providers.filter(p => p && typeof p === 'object' && typeof p.id === 'string')
 		: [];
 
 	// Load user settings
@@ -153,8 +171,8 @@ export async function loadSettings(): Promise<Settings> {
 		betaFeatures: data.general_settings?.betaFeatures ?? defaultSettings.betaFeatures,
 		legacyMode: data.general_settings?.legacyMode ?? defaultSettings.legacyMode,
 		silentOpen: data.general_settings?.silentOpen ?? defaultSettings.silentOpen,
-		openBehavior: typeof data.general_settings?.openBehavior === 'boolean' 
-			? (data.general_settings.openBehavior ? 'embedded' : 'popup') 
+		openBehavior: typeof data.general_settings?.openBehavior === 'boolean'
+			? (data.general_settings.openBehavior ? 'embedded' : 'popup')
 			: (data.general_settings?.openBehavior ?? defaultSettings.openBehavior),
 		highlighterEnabled: data.highlighter_settings?.highlighterEnabled ?? defaultSettings.highlighterEnabled,
 		alwaysShowHighlights: data.highlighter_settings?.alwaysShowHighlights ?? defaultSettings.alwaysShowHighlights,
@@ -176,7 +194,13 @@ export async function loadSettings(): Promise<Settings> {
 		stats: data.stats || defaultSettings.stats,
 		history: data.history || defaultSettings.history,
 		ratings: data.ratings || defaultSettings.ratings,
-		saveBehavior: data.general_settings?.saveBehavior ?? defaultSettings.saveBehavior
+		saveBehavior: data.general_settings?.saveBehavior ?? defaultSettings.saveBehavior,
+		obsidianApi: {
+			enabled: data.obsidian_api?.enabled ?? defaultSettings.obsidianApi.enabled,
+			apiKey: data.obsidian_api?.apiKey || defaultSettings.obsidianApi.apiKey,
+			host: data.obsidian_api?.host || defaultSettings.obsidianApi.host,
+			port: data.obsidian_api?.port ?? defaultSettings.obsidianApi.port
+		}
 	};
 
 	generalSettings = loadedSettings;
@@ -220,6 +244,12 @@ export async function saveSettings(settings?: Partial<Settings>): Promise<void> 
 			theme: generalSettings.readerSettings.theme,
 			themeMode: generalSettings.readerSettings.themeMode
 		},
+		obsidian_api: {
+			enabled: generalSettings.obsidianApi.enabled,
+			apiKey: generalSettings.obsidianApi.apiKey,
+			host: generalSettings.obsidianApi.host,
+			port: generalSettings.obsidianApi.port
+		},
 		stats: generalSettings.stats
 	});
 }
@@ -247,8 +277,8 @@ export async function incrementStat(
 }
 
 export async function addHistoryEntry(
-	action: keyof Settings['stats'], 
-	url: string, 
+	action: keyof Settings['stats'],
+	url: string,
 	title?: string,
 	vault?: string,
 	path?: string

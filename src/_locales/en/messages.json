@@ -841,5 +841,14 @@
 	},
 	"version": {
 		"message": "Version"
+	},
+	"obsidianApiVerify": {
+		"message": "Connection troubleshooting"
+	},
+	"obsidianApiVerifyDescription": {
+		"message": "If you get a certificate error, use the button below to open the API in a new tab and choose \"Proceed\" or \"Accept Risk\" to trust it."
+	},
+	"obsidianApiTest": {
+		"message": "Test connection"
 	}
 }
