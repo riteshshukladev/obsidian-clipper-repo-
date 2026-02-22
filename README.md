@@ -1,3 +1,26 @@
+# Obsidian Web Clipper — Fork with Folder Picker
+
+> ⚠️ This is a fork of [obsidianmd/obsidian-clipper](https://github.com/obsidianmd/obsidian-clipper). All original credits go to the Obsidian team.
+
+## What's different in this fork?
+
+The original Web Clipper requires you to manually type the folder path every time you save something. If your vault has a deep or complex structure, that gets old fast.
+
+This fork adds a **folder picker dropdown** — powered by the [Local REST API](https://github.com/coddingtonbear/obsidian-local-rest-api) community plugin — so you can browse and select your vault folders instead of typing paths from memory.
+
+### Setup
+
+1. Install the [Local REST API](https://github.com/coddingtonbear/obsidian-local-rest-api) community plugin in Obsidian and enable it
+2. Copy your API key from Obsidian → Settings → Local REST API
+3. Paste it into the Web Clipper extension settings
+4. That's it — your folder structure will now appear as a dropdown when saving
+
+> Obsidian needs to be open for the folder picker to work, as the Local REST API plugin runs inside Obsidian.
+
+---
+
+## Original README
+
 Obsidian Web Clipper helps you highlight and capture the web in your favorite browser. Anything you save is stored as durable Markdown files that you can read offline, and preserve for the long term.
 
 - **[Download Web Clipper](https://obsidian.md/clipper)**
@@ -104,3 +127,9 @@ npm run test:watch
 - [lucide](https://github.com/lucide-icons/lucide) for icons
 - [mathml-to-latex](https://github.com/asnunes/mathml-to-latex) for MathML to LaTeX conversion
 - [dompurify](https://github.com/cure53/DOMPurify) for sanitizing HTML
+- [obsidian-local-rest-api](https://github.com/coddingtonbear/obsidian-local-rest-api) for vault folder access
+
+## Credits
+
+- Original extension by the [Obsidian team](https://obsidian.md)
+- Fork and folder picker feature by [Your Name](https://github.com/YourUsername)
